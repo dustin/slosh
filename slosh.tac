@@ -120,9 +120,9 @@ class TopResource(resource.Resource):
 application = service.Application('slosh')
 serviceCollection = service.IServiceCollection(application)
 
-# 30s sessions
-server.Session.sessionTimeout=10
+# Keep really short sessions.
+server.Session.sessionTimeout=30
 
 site = server.Site(TopResource())
-site.sessionCheckTime = 5
+site.sessionCheckTime = 30
 internet.TCPServer(8000, site).setServiceParent(serviceCollection)
