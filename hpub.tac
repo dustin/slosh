@@ -9,26 +9,40 @@ from twisted.application import internet, service
 from twisted.web import server, resource, static
 from twisted.internet import defer
 
+class RequestQueue(object):
+
+    def __init__(self, session):
+        self.session = session
+        self.__q=[]
+
+    def append(self, content):
+        self.__q.append(content)
+
+    def empty(self):
+        rv = self.__q
+        self.__q = []
+        return rv
+
 class Topic(resource.Resource):
 
     def __init__(self):
         self.requests=[]
-        self.sessions={}
+        self.queues={}
 
     def render(self, request):
         if request.method == 'GET':
             session = request.getSession()
-            if session.uid not in self.sessions:
+            if session.uid not in self.queues:
                 print "New session: ", session.uid
-                self.sessions[session.uid] = []
+                self.queues[session.uid] = RequestQueue(session)
                 session.notifyOnExpire(self.__mk_session_exp_cb(session.uid))
             if not self.__deliver(request):
                 self.requests.append(request)
             return server.NOT_DONE_YET
         else:
-            # Store all the data for all known sessions
+            # Store all the data for all known queues
             params=str(request.args)
-            for sid, a in self.sessions.iteritems():
+            for sid, a in self.queues.iteritems():
                 print "Queueing to", sid
                 a.append(params)
             # Now find all current requests and feed them.
@@ -40,10 +54,9 @@ class Topic(resource.Resource):
 
     def __deliver(self, req):
         sid = req.getSession().uid
-        data = self.sessions[sid]
+        data = self.queues[sid].empty()
         if data:
             print "Delivering to", sid
-            self.sessions[sid] = []
             c = '\n'.join(data)
             req.write(self.__mk_res(req, c, 'text/plain'))
             req.finish()
@@ -52,7 +65,7 @@ class Topic(resource.Resource):
     def __mk_session_exp_cb(self, sid):
         def f():
             print "Expired session", sid
-            del self.sessions[sid]
+            del self.queues[sid]
         return f
 
     def __mk_res(self, req, s, t):
