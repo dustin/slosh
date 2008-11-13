@@ -5,6 +5,10 @@ Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
 """
 
 import sys
+import xml.sax
+import xml.sax.saxutils
+import cStringIO as StringIO
+
 from twisted.application import internet, service
 from twisted.web import server, resource, static
 from twisted.internet import defer, task
@@ -43,7 +47,7 @@ class Topic(resource.Resource):
             return server.NOT_DONE_YET
         else:
             # Store all the data for all known queues
-            params=str(request.args)
+            params=self.__xml(request.args)
             for sid, a in self.queues.iteritems():
                 print "Queueing to", sid
                 a.append(params)
@@ -54,6 +58,23 @@ class Topic(resource.Resource):
                 self.__deliver(r)
             return self.__mk_res(request, 'ok', 'text/plain')
 
+    def __xml(self, h):
+        class G(xml.sax.saxutils.XMLGenerator):
+            def doElement(self, name, value, attrs={}):
+                self.startElement(name, attrs)
+                if value is not None:
+                    self.characters(value)
+                self.endElement(name)
+        s=StringIO.StringIO()
+        g=G(s, 'utf-8')
+        g.startElement("p", {})
+        for k,v in h.iteritems():
+            for subv in v:
+                g.doElement(k, subv)
+        g.endElement("p")
+        s.seek(0, 0)
+        return s.read()
+
     def __touch_active_sessions(self):
         for r in self.requests:
             r.getSession().touch()
@@ -63,8 +84,8 @@ class Topic(resource.Resource):
         data = self.queues[sid].empty()
         if data:
             print "Delivering to", sid
-            c = '\n'.join(data)
-            req.write(self.__mk_res(req, c, 'text/plain'))
+            c = '<?xml version="1.0"?>\n<res>' + '\n'.join(data) + "</res>"
+            req.write(self.__mk_res(req, c, 'text/xml'))
             req.finish()
         return data
 
