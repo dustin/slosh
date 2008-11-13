@@ -7,7 +7,7 @@ Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
 import sys
 from twisted.application import internet, service
 from twisted.web import server, resource, static
-from twisted.internet import defer
+from twisted.internet import defer, task
 
 class RequestQueue(object):
 
@@ -28,6 +28,8 @@ class Topic(resource.Resource):
     def __init__(self):
         self.requests=[]
         self.queues={}
+        l = task.LoopingCall(self.__touch_active_sessions)
+        l.start(5, now=False)
 
     def render(self, request):
         if request.method == 'GET':
@@ -51,6 +53,10 @@ class Topic(resource.Resource):
             for r in t:
                 self.__deliver(r)
             return self.__mk_res(request, 'ok', 'text/plain')
+
+    def __touch_active_sessions(self):
+        for r in self.requests:
+            r.getSession().touch()
 
     def __deliver(self, req):
         sid = req.getSession().uid
