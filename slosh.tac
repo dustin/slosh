@@ -96,7 +96,7 @@ class TopResource(resource.Resource):
 
         return topic
 
-application = service.Application('hpub')
+application = service.Application('slosh')
 serviceCollection = service.IServiceCollection(application)
 
 # 30s sessions
