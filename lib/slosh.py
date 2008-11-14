@@ -98,3 +98,12 @@ class Topic(resource.Resource):
         req.setHeader("content-length", str(len(s)))
         return s
 
+class Topics(resource.Resource):
+
+    def getChild(self, path, request):
+        t=path.split('/', 1)[0]
+        topic = Topic()
+        self.putChild(t, topic)
+        print "Registered new topic", t
+        return topic
+
