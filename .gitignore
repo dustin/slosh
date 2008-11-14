@@ -1,3 +1,4 @@
 *.pyc
 *.pid
+*.log
 slosh.conf
