@@ -20,6 +20,10 @@ serviceCollection = service.IServiceCollection(application)
 # Keep really short sessions.
 server.Session.sessionTimeout=30
 
-site = server.Site(slosh.Topics())
+root = resource.Resource()
+root.putChild('topics', slosh.Topics())
+root.putChild('', static.File("."))
+
+site = server.Site(root)
 site.sessionCheckTime = 30
 internet.TCPServer(8000, site).setServiceParent(serviceCollection)
