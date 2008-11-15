@@ -1,0 +1,28 @@
+html {
+	font-family: verdana;
+}
+
+h1 {
+	text-align: right;
+	color: #ddd;
+}
+
+#messages {
+	width: 600px;
+	height: 200px;
+	border: solid 3px #ddd;
+	overflow: auto;
+	margin: 0;
+	padding: 0;
+}
+
+#messages .from {
+	color: green;
+	width: 50px;
+}
+
+textarea {
+	width: 600px;
+	height: 5em;
+	display: block;
+}

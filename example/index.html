@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) 2008  Dustin Sallings <dustin+html@spy.net> -->
+<html lang="en">
+	<head>
+		<title>slosh chat</title>
+		<script type="text/javascript"
+			src="http://code.jquery.com/jquery-latest.js"></script>
+		<link title="Default" rel="stylesheet" media="screen" href="style.css" />
+	</head>
+
+	<body>
+		<h1>Welcome to Slosh Chat</h1>
+
+		<div id="messages">
+			<div>
+				<span class="from">First!:</span>
+				<span class="msg">Welcome to chat.  Please don't hurt each other.</span>
+			</div>
+		</div>
+
+		<form method="post" action="#">
+			<div>Nick: <input id='from' type="text" name="from"/></div>
+			<div>Message:</div>
+			<div><textarea id='msg' name="msg"></textarea></div>
+			<div><input type="submit" value="Say it" id="submit"/></div>
+		</form>
+
+		<script type="text/javascript">
+			function gotData(x, st) {
+				var msgs=$('#messages');
+				var els=x.getElementsByTagName("p");
+				$.each(els, function(idx, p) {
+					var from=p.getElementsByTagName("from")[0].firstChild.data;
+					var msg=p.getElementsByTagName("msg")[0].firstChild.data;
+					msgs.append("<div><span class='from'>" + from + ":</span>" +
+						" <span class='msg'>" + msg + "</span></div>");
+				});
+				// The jQuery wrapped msgs above does not work here.
+				var msgs=document.getElementById("messages");
+				msgs.scrollTop = msgs.scrollHeight;
+			}
+
+			function getNewComments() {
+				$.get('/topics/chat', gotData);
+			}
+
+			$(document).ready(function() {
+				$(document).ajaxStop(getNewComments);
+				$("form").submit(function() {
+					$.post('/topics/chat', $('form').serialize());
+					return false;
+				});
+				getNewComments();
+			});
+		</script>
+	</body>
+</html>
+
