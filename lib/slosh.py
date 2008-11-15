@@ -86,7 +86,7 @@ class Topic(resource.Resource):
         sid = req.getSession().uid
         data = self.queues[sid].empty()
         if data:
-            print "Delivering to", sid
+            print "Delivering to %s at %s (%d)" % (sid, req, id(req))
             c = '<?xml version="1.0"?>\n<res>' + '\n'.join(data) + "</res>"
             req.write(self.__mk_res(req, c, 'text/xml'))
             req.finish()
