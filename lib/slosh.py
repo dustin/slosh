@@ -42,6 +42,7 @@ class Topic(resource.Resource):
                 session.notifyOnExpire(self.__mk_session_exp_cb(session.uid))
             if not self.__deliver(request):
                 self.requests.append(request)
+                request.notifyFinish().addBoth(self.__req_finished(request))
             return server.NOT_DONE_YET
         else:
             # Store all the data for all known queues
@@ -49,12 +50,16 @@ class Topic(resource.Resource):
             for sid, a in self.queues.iteritems():
                 print "Queueing to", sid
                 a.append(params)
-            # Now find all current requests and feed them.
-            t=self.requests
-            self.requests=[]
-            for r in t:
+            for r in self.requests:
                 self.__deliver(r)
             return self.__mk_res(request, 'ok', 'text/plain')
+
+    def __req_finished(self, request):
+        print "New in-flight request %s (%d)" % (request, id(request))
+        def f(*whatever):
+            print "Completed %s (%d)" % (request, id(request))
+            self.requests.remove(request)
+        return f
 
     def __xml(self, h):
         class G(xml.sax.saxutils.XMLGenerator):
