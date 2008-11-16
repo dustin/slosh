@@ -11,18 +11,33 @@ import cStringIO as StringIO
 from twisted.web import server, resource
 from twisted.internet import task
 
+# Stolen from memcached protocol
+try:
+    from collections import deque
+except ImportError:
+    class deque(list):
+        def popleft(self):
+            return self.pop(0)
+
 class RequestQueue(object):
+
+    max_queue_size = 100
 
     def __init__(self, session):
         self.session = session
-        self.__q=[]
+        self.accepted = 0
+        self.__q=deque()
 
     def append(self, content):
+        self.accepted += 1
         self.__q.append(content)
+        if self.accepted > self.max_queue_size:
+            self.__q.popleft()
 
     def empty(self):
-        rv = self.__q
-        self.__q = []
+        rv = (self.__q, self.accepted)
+        self.__q = deque()
+        self.accepted = 0
         return rv
 
 class Topic(resource.Resource):
@@ -84,10 +99,11 @@ class Topic(resource.Resource):
 
     def __deliver(self, req):
         sid = req.getSession().uid
-        data = self.queues[sid].empty()
+        (data, oldsize) = self.queues[sid].empty()
         if data:
             print "Delivering to %s at %s (%d)" % (sid, req, id(req))
-            c = '<?xml version="1.0"?>\n<res>' + '\n'.join(data) + "</res>"
+            c = ('<?xml version="1.0"?>\n<res saw="' + str(oldsize)
+                + '">' + '\n'.join(data) + "</res>")
             req.write(self.__mk_res(req, c, 'text/xml'))
             req.finish()
         return data
