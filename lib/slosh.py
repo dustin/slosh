@@ -61,10 +61,10 @@ class Topic(resource.Resource):
             return server.NOT_DONE_YET
         else:
             # Store all the data for all known queues
-            params=self.__xml(request.args)
+            args = request.args
             for sid, a in self.queues.iteritems():
                 print "Queueing to", sid
-                a.append(params)
+                a.append(args)
             for r in self.requests:
                 self.__deliver(r)
             return self.__mk_res(request, 'ok', 'text/plain')
@@ -76,23 +76,6 @@ class Topic(resource.Resource):
             self.requests.remove(request)
         return f
 
-    def __xml(self, h):
-        class G(xml.sax.saxutils.XMLGenerator):
-            def doElement(self, name, value, attrs={}):
-                self.startElement(name, attrs)
-                if value is not None:
-                    self.characters(value)
-                self.endElement(name)
-        s=StringIO.StringIO()
-        g=G(s, 'utf-8')
-        g.startElement("p", {})
-        for k,v in h.iteritems():
-            for subv in v:
-                g.doElement(k, subv)
-        g.endElement("p")
-        s.seek(0, 0)
-        return s.read()
-
     def __touch_active_sessions(self):
         for r in self.requests:
             r.getSession().touch()
@@ -100,13 +83,38 @@ class Topic(resource.Resource):
     def __deliver(self, req):
         sid = req.getSession().uid
         (data, oldsize) = self.queues[sid].empty()
+        print "Delivering to %s at %s (%d)" % (sid, req, id(req))
         if data:
-            print "Delivering to %s at %s (%d)" % (sid, req, id(req))
-            c = ('<?xml version="1.0"?>\n<res saw="' + str(oldsize)
-                + '">' + '\n'.join(data) + "</res>")
-            req.write(self.__mk_res(req, c, 'text/xml'))
+            self.__transmit_xml(req, data, oldsize)
             req.finish()
         return data
+
+    def __transmit_xml(self, req, data, oldsize):
+        class G(xml.sax.saxutils.XMLGenerator):
+            def doElement(self, name, value, attrs={}):
+                self.startElement(name, attrs)
+                if value is not None:
+                    self.characters(value)
+                self.endElement(name)
+
+        s=StringIO.StringIO()
+        g=G(s, 'utf-8')
+
+        g.startDocument()
+        g.startElement("res", {'saw': str(oldsize) })
+
+        for h in data:
+            g.startElement("p", {})
+            for k,v in h.iteritems():
+                for subv in v:
+                    g.doElement(k, subv)
+            g.endElement("p")
+        g.endElement("res")
+
+        g.endDocument()
+
+        s.seek(0, 0)
+        req.write(self.__mk_res(req, s.read(), 'text/xml'))
 
     def __mk_session_exp_cb(self, sid):
         def f():
