@@ -130,8 +130,12 @@ class Topics(resource.Resource):
 
     def getChild(self, path, request):
         t=path.split('/', 1)[0]
-        topic = Topic()
-        self.putChild(t, topic)
-        print "Registered new topic", t
+        if t.find(".") > 0:
+            t=t.split(".", 1)[0]
+            topic = self.getChildWithDefault(t, request)
+        else:
+            topic = Topic()
+            self.putChild(t, topic)
+            print "Registered new topic", t
         return topic
 
