@@ -40,3 +40,10 @@ should see queued results immediately:
         <x>hello!</x>
       </p>
     </res>
+
+# Requirements
+
+[twisted](http://twistedmatrix.com/) is required to do anything at all.
+
+If you want JSON formatted results, the
+[python-cjson](http://pypi.python.org/pypi/python-cjson) egg is requird.
