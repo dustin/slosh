@@ -97,8 +97,10 @@ class Topic(resource.Resource):
                     self.characters(value)
                 self.endElement(name)
 
-        s=StringIO.StringIO()
-        g=G(s, 'utf-8')
+        req.setHeader("content-type", 'text/xml')
+        req.chunked = 1
+
+        g=G(req, 'utf-8')
 
         g.startDocument()
         g.startElement("res", {'saw': str(oldsize) })
@@ -112,9 +114,6 @@ class Topic(resource.Resource):
         g.endElement("res")
 
         g.endDocument()
-
-        s.seek(0, 0)
-        req.write(self.__mk_res(req, s.read(), 'text/xml'))
 
     def __mk_session_exp_cb(self, sid):
         def f():
