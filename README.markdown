@@ -46,6 +46,20 @@ server.  It may be larger than the number of requests you receive if the rate
 of incoming requests is higher than the rate at which you're processing the
 results.
 
+# Formats
+
+The default output format is XML.  However, JSON is also optionally supported
+and may be requested at access time by adding `.json` to the topic path.
+
+For exaple, the following paths pull data from the same topic in XML format:
+
+    /topics/test
+	/topics/test.xml
+
+If you wanted the same data, but in JSON format, you'd ask for the following:
+
+    /topic/test.json
+
 # Requirements
 
 [twisted](http://twistedmatrix.com/) is required to do anything at all.
