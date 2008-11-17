@@ -45,7 +45,7 @@ class Topic(resource.Resource):
     def __init__(self):
         self.requests=[]
         self.queues={}
-        self.formats={'xml': self.__transmit_xml}
+        self.formats={'xml': self.__transmit_xml, 'json': self.__transmit_json}
         l = task.LoopingCall(self.__touch_active_sessions)
         l.start(5, now=False)
 
@@ -118,6 +118,12 @@ class Topic(resource.Resource):
         g.endElement("res")
 
         g.endDocument()
+
+    def __transmit_json(self, req, data, oldsize):
+        import cjson
+        jdata=[dict(s) for s in data]
+        j=cjson.encode({'saw': oldsize, 'res': jdata})
+        req.write(self.__mk_res(req, j, 'text/plain'))
 
     def __mk_session_exp_cb(self, sid):
         def f():
