@@ -65,4 +65,4 @@ If you wanted the same data, but in JSON format, you'd ask for the following:
 [twisted](http://twistedmatrix.com/) is required to do anything at all.
 
 If you want JSON formatted results, the
-[python-cjson](http://pypi.python.org/pypi/python-cjson) egg is requird.
+[python-cjson](http://pypi.python.org/pypi/python-cjson) egg is required.
