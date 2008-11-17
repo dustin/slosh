@@ -45,6 +45,7 @@ class Topic(resource.Resource):
     def __init__(self):
         self.requests=[]
         self.queues={}
+        self.formats={'xml': self.__transmit_xml}
         l = task.LoopingCall(self.__touch_active_sessions)
         l.start(5, now=False)
 
@@ -83,9 +84,12 @@ class Topic(resource.Resource):
     def __deliver(self, req):
         sid = req.getSession().uid
         (data, oldsize) = self.queues[sid].empty()
-        print "Delivering to %s at %s (%d)" % (sid, req, id(req))
         if data:
-            self.__transmit_xml(req, data, oldsize)
+            fmt = 'xml'
+            if req.path.find(".") > 0:
+                fmt=req.path.split(".")[-1]
+            print "Delivering %s to %s at %s (%d)" % (fmt, sid, req, id(req))
+            self.formats.get(fmt, self.__transmit_xml)(req, data, oldsize)
             req.finish()
         return data
 
