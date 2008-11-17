@@ -20,7 +20,7 @@ will hang indefinitely waiting for a results.  Now run the following:
 
 You should instantly see results in your browser:
 
-    <res>
+    <res saw="1">
       <p>
         <x>hello!</x>
       </p>
@@ -29,7 +29,7 @@ You should instantly see results in your browser:
 If you repeat the above query three times and reload with the browser, you
 should see queued results immediately:
 
-    <res>
+    <res saw="3">
       <p>
         <x>hello!</x>
       </p>
@@ -40,6 +40,11 @@ should see queued results immediately:
         <x>hello!</x>
       </p>
     </res>
+
+The `saw` value describes how many incoming messages were received by the
+server.  It may be larger than the number of requests you receive if the rate
+of incoming requests is higher than the rate at which you're processing the
+results.
 
 # Requirements
 
