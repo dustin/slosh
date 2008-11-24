@@ -64,16 +64,13 @@ class Topic(resource.Resource):
             # Store all the data for all known queues
             args = request.args
             for sid, a in self.queues.iteritems():
-                print "Queueing to", sid
                 a.append(args)
             for r in self.requests:
                 self.__deliver(r)
             return self.__mk_res(request, 'ok', 'text/plain')
 
     def __req_finished(self, request):
-        print "New in-flight request %s (%d)" % (request, id(request))
         def f(*whatever):
-            print "Completed %s (%d)" % (request, id(request))
             self.requests.remove(request)
         return f
 
@@ -88,7 +85,6 @@ class Topic(resource.Resource):
             fmt = 'xml'
             if req.path.find(".") > 0:
                 fmt=req.path.split(".")[-1]
-            print "Delivering %s to %s at %s (%d)" % (fmt, sid, req, id(req))
             self.formats.get(fmt, self.__transmit_xml)(req, data, oldsize)
             req.finish()
         return data
