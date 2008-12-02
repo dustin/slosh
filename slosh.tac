@@ -29,4 +29,7 @@ root.putChild('topics', slosh.Topics())
 
 site = server.Site(root)
 site.sessionCheckTime = 30
-internet.TCPServer(8000, site).setServiceParent(serviceCollection)
+portnum = 8000
+if conf.has_option('web', 'port'):
+    portnum = conf.getint('web', 'port')
+internet.TCPServer(portnum, site).setServiceParent(serviceCollection)
