@@ -7,17 +7,10 @@ Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
 import xml.sax
 import xml.sax.saxutils
 import cStringIO as StringIO
+from collections import deque
 
 from twisted.web import server, resource
 from twisted.internet import task
-
-# Stolen from memcached protocol
-try:
-    from collections import deque
-except ImportError:
-    class deque(list):
-        def popleft(self):
-            return self.pop(0)
 
 class RequestQueue(object):
 
