@@ -54,7 +54,7 @@ and may be requested at access time by adding `.json` to the topic path.
 For exaple, the following paths pull data from the same topic in XML format:
 
     /topics/test
-	/topics/test.xml
+    /topics/test.xml
 
 If you wanted the same data, but in JSON format, you'd ask for the following:
 
