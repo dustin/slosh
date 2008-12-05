@@ -121,7 +121,10 @@ class ReflectionClient(object):
         factory.deferred.addErrback(self.logError)
         return factory.deferred
 
-lc = task.LoopingCall(ReflectionClient(sys.argv[1], sys.argv[2:]))
-lc.start(0)
+def startReflector(urlin, urlsout, transformer=identityTransform):
+    lc = task.LoopingCall(ReflectionClient(urlin, urlsout, transformer))
+    lc.start(0)
 
-reactor.run()
+if __name__ == '__main__':
+    startReflector(sys.argv[1], sys.argv[2:])
+    reactor.run()
