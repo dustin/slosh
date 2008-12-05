@@ -7,7 +7,6 @@ Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
 
 import sys
 import urllib
-import itertools
 
 from twisted.internet import reactor, task, error
 from twisted.web import client, sux
@@ -23,19 +22,13 @@ def cb(factory):
 class Post(object):
 
     def __init__(self):
-        self.keys=[]
-        self.vals=[]
+        self.pairs = []
 
     def add(self, key, data):
-        self.keys.append(key)
-        self.vals.append(data)
-
-    def pairs(self):
-        return itertools.izip(self.keys, self.vals)
+        self.pairs.append((key, data))
 
     def __repr__(self):
-        return ("<Post %s>" %
-            (', '.join([k + "=" + v for (k,v) in self.pairs()])))
+        return "<Post %s>" % (', '.join([k + "=" + v for (k,v) in self.pairs]))
 
 class Emitter(sux.XMLParser):
 
@@ -86,7 +79,7 @@ class Emitter(sux.XMLParser):
 
     def emit(self):
         h = {'Content-Type': 'application/x-www-form-urlencoded'}
-        params = urllib.urlencode(list(self.currentEntry.pairs()))
+        params = urllib.urlencode(self.currentEntry.pairs)
         for url in self.urls:
             client.getPage(url, method='POST', postdata=params, headers=h)
 
