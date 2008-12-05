@@ -12,8 +12,7 @@ from twisted.internet import reactor, task, error
 from twisted.web import client, sux
 
 # The transformation function will receive a sequence of pairs and should
-# return either a new sequence of pairs or a dict (or something else that has
-# an items method that returns a list of pairs).
+# return a new sequence of pairs.
 def identityTransform(s):
     return s
 
