@@ -90,6 +90,9 @@ class Emitter(sux.XMLParser):
         for url in self.urls:
             client.getPage(url, method='POST', postdata=params, headers=h)
 
+def logError(e):
+    print e
+
 def copy(urlin, urlsout):
     # Stolen cookie code since the web API is inconsistent...
     headers={}
@@ -102,6 +105,7 @@ def copy(urlin, urlsout):
     scheme, host, port, path = client._parse(urlin)
     reactor.connectTCP(host, port, factory)
     factory.deferred.addCallback(cb(factory))
+    factory.deferred.addErrback(logError)
     return factory.deferred
 
 lc = task.LoopingCall(copy, sys.argv[1], sys.argv[2:])
