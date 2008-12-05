@@ -11,14 +11,6 @@ import urllib
 from twisted.internet import reactor, task, error
 from twisted.web import client, sux
 
-cookies = {}
-
-def cb(factory):
-    def f(data):
-        global cookies
-        cookies = factory.cookies
-    return f
-
 # The transformation function will receive a sequence of pairs and should
 # return either a new sequence of pairs or a dict (or something else that has
 # an items method that returns a list of pairs).
@@ -95,26 +87,41 @@ class Emitter(sux.XMLParser):
         for url in self.urls:
             client.getPage(url, method='POST', postdata=params, headers=h)
 
-def logError(e):
-    print e
+class ReflectionClient(object):
 
-def copy(urlin, urlsout, transformer=identityTransform):
-    # Stolen cookie code since the web API is inconsistent...
-    headers={}
-    l=[]
-    for cookie, cookval in cookies.items():
-        l.append('%s=%s' % (cookie, cookval))
-    headers['Cookie'] = '; '.join(l)
+    cookies = {}
 
-    factory = client.HTTPDownloader(urlin,
-        Emitter(urlsout, transformer), headers=headers)
-    scheme, host, port, path = client._parse(urlin)
-    reactor.connectTCP(host, port, factory)
-    factory.deferred.addCallback(cb(factory))
-    factory.deferred.addErrback(logError)
-    return factory.deferred
+    def __init__(self, urlin, urlsout, transformer=identityTransform):
+        self.urlin = urlin
+        self.urlsout = urlsout
+        self.transformer = transformer
 
-lc = task.LoopingCall(copy, sys.argv[1], sys.argv[2:])
+        self.scheme, self.host, self.port, self.path = client._parse(urlin)
+
+    def cb(self, factory):
+        def f(data):
+            self.cookies = factory.cookies
+        return f
+
+    def logError(e):
+        print e
+
+    def __call__(self):
+        # Stolen cookie code since the web API is inconsistent...
+        headers={}
+        l=[]
+        for cookie, cookval in self.cookies.items():
+            l.append('%s=%s' % (cookie, cookval))
+        headers['Cookie'] = '; '.join(l)
+
+        factory = client.HTTPDownloader(self.urlin,
+            Emitter(self.urlsout, self.transformer), headers=headers)
+        reactor.connectTCP(self.host, self.port, factory)
+        factory.deferred.addCallback(self.cb(factory))
+        factory.deferred.addErrback(self.logError)
+        return factory.deferred
+
+lc = task.LoopingCall(ReflectionClient(sys.argv[1], sys.argv[2:]))
 lc.start(0)
 
 reactor.run()
