@@ -103,7 +103,7 @@ class ReflectionClient(object):
             self.cookies = factory.cookies
         return f
 
-    def logError(e):
+    def logError(self, e):
         print e
 
     def __call__(self):
