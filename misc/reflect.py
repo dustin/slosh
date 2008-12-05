@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Stream updates from one slosh instance to another.
+Stream updates from one slosh instance to one or more others.
 
 Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
 """
@@ -39,8 +39,8 @@ class Post(object):
 
 class Emitter(sux.XMLParser):
 
-    def __init__(self, url):
-        self.url = url
+    def __init__(self, urls):
+        self.urls = urls
         self.connectionMade()
         self.currentEntry=None
         self.data = []
@@ -87,9 +87,10 @@ class Emitter(sux.XMLParser):
     def emit(self):
         h = {'Content-Type': 'application/x-www-form-urlencoded'}
         params = urllib.urlencode(list(self.currentEntry.pairs()))
-        client.getPage(self.url, method='POST', postdata=params, headers=h)
+        for url in self.urls:
+            client.getPage(url, method='POST', postdata=params, headers=h)
 
-def copy(urlin, urlout):
+def copy(urlin, urlsout):
     # Stolen cookie code since the web API is inconsistent...
     headers={}
     l=[]
@@ -97,13 +98,13 @@ def copy(urlin, urlout):
         l.append('%s=%s' % (cookie, cookval))
     headers['Cookie'] = '; '.join(l)
 
-    factory = client.HTTPDownloader(urlin, Emitter(urlout), headers=headers)
+    factory = client.HTTPDownloader(urlin, Emitter(urlsout), headers=headers)
     scheme, host, port, path = client._parse(urlin)
     reactor.connectTCP(host, port, factory)
     factory.deferred.addCallback(cb(factory))
     return factory.deferred
 
-lc = task.LoopingCall(copy, sys.argv[1], sys.argv[2])
+lc = task.LoopingCall(copy, sys.argv[1], sys.argv[2:])
 lc.start(0)
 
 reactor.run()
