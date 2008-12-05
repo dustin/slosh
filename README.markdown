@@ -13,10 +13,10 @@ techniques.
 Integration with existing services is quite easy.  Services simply POST into a
 topic URL and a GET on the same URL will return that data in XML form.
 
-For example point your browser to http://localhost:8000/test -- The browser
-will hang indefinitely waiting for a results.  Now run the following:
+For example point your browser to http://localhost:8000/topics/test -- The
+browser will hang indefinitely waiting for a results.  Now run the following:
 
-    curl -d 'x=hello!' http://localhost:8000/test
+    curl -d 'x=hello!' http://localhost:8000/topics/test
 
 You should instantly see results in your browser:
 
