@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+"""
+Stream updates from one slosh instance to another.
+
+Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
+"""
+
+import sys
+import urllib
+import itertools
+
+from twisted.internet import reactor, task, error
+from twisted.web import client, sux
+
+cookies = {}
+
+def cb(factory):
+    def f(data):
+        global cookies
+        cookies = factory.cookies
+    return f
+
+class Post(object):
+
+    def __init__(self):
+        self.keys=[]
+        self.vals=[]
+
+    def add(self, key, data):
+        self.keys.append(key)
+        self.vals.append(data)
+
+    def pairs(self):
+        return itertools.izip(self.keys, self.vals)
+
+    def __repr__(self):
+        return ("<Post %s>" %
+            (', '.join([k + "=" + v for (k,v) in self.pairs()])))
+
+class Emitter(sux.XMLParser):
+
+    def __init__(self, url):
+        self.url = url
+        self.connectionMade()
+        self.currentEntry=None
+        self.data = []
+        self.depth = 0
+
+    def write(self, b):
+        self.dataReceived(b)
+
+    def close(self):
+        self.connectionLost(error.ConnectionDone())
+
+    def open(self):
+        pass
+
+    def read(self):
+        return None
+
+    def gotTagStart(self, name, attrs):
+        self.depth += 1
+        self.data = []
+        if self.depth == 2:
+            assert self.currentEntry is None
+            self.currentEntry = Post()
+
+    def gotTagEnd(self, name):
+        self.depth -= 1
+        if self.currentEntry:
+            if self.depth == 1:
+                self.emit()
+                self.currentEntry = None
+            else:
+                self.currentEntry.add(name, ''.join(self.data).decode('utf8'))
+
+    def gotText(self, data):
+        self.data.append(data)
+
+    def gotEntityReference(self, data):
+        e = {'quot': '"', 'lt': '&lt;', 'gt': '&gt;', 'amp': '&amp;'}
+        if e.has_key(data):
+            self.data.append(e[data])
+        else:
+            print "Unhandled entity reference: ", data
+
+    def emit(self):
+        h = {'Content-Type': 'application/x-www-form-urlencoded'}
+        params = urllib.urlencode(list(self.currentEntry.pairs()))
+        client.getPage(self.url, method='POST', postdata=params, headers=h)
+
+def copy(urlin, urlout):
+    # Stolen cookie code since the web API is inconsistent...
+    headers={}
+    l=[]
+    for cookie, cookval in cookies.items():
+        l.append('%s=%s' % (cookie, cookval))
+    headers['Cookie'] = '; '.join(l)
+
+    factory = client.HTTPDownloader(urlin, Emitter(urlout), headers=headers)
+    scheme, host, port, path = client._parse(urlin)
+    reactor.connectTCP(host, port, factory)
+    factory.deferred.addCallback(cb(factory))
+    return factory.deferred
+
+lc = task.LoopingCall(copy, sys.argv[1], sys.argv[2])
+lc.start(0)
+
+reactor.run()
