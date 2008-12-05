@@ -19,21 +19,33 @@ def cb(factory):
         cookies = factory.cookies
     return f
 
+# The transformation function will receive a sequence of pairs and should
+# return either a new sequence of pairs or a dict (or something else that has
+# an items method that returns a list of pairs).
+def identityTransform(s):
+    return s
+
 class Post(object):
 
-    def __init__(self):
+    def __init__(self, transformer):
         self.pairs = []
+        self.transformer = transformer
 
     def add(self, key, data):
         self.pairs.append((key, data))
+
+    # items is called by urllib.urlencode, the results of which will be posted
+    def items(self):
+        return self.transformer(self.pairs)
 
     def __repr__(self):
         return "<Post %s>" % (', '.join([k + "=" + v for (k,v) in self.pairs]))
 
 class Emitter(sux.XMLParser):
 
-    def __init__(self, urls):
+    def __init__(self, urls, transformer):
         self.urls = urls
+        self.transformer = transformer
         self.connectionMade()
         self.currentEntry=None
         self.data = []
@@ -56,7 +68,7 @@ class Emitter(sux.XMLParser):
         self.data = []
         if self.depth == 2:
             assert self.currentEntry is None
-            self.currentEntry = Post()
+            self.currentEntry = Post(self.transformer)
 
     def gotTagEnd(self, name):
         self.depth -= 1
@@ -79,14 +91,14 @@ class Emitter(sux.XMLParser):
 
     def emit(self):
         h = {'Content-Type': 'application/x-www-form-urlencoded'}
-        params = urllib.urlencode(self.currentEntry.pairs)
+        params = urllib.urlencode(self.currentEntry)
         for url in self.urls:
             client.getPage(url, method='POST', postdata=params, headers=h)
 
 def logError(e):
     print e
 
-def copy(urlin, urlsout):
+def copy(urlin, urlsout, transformer=identityTransform):
     # Stolen cookie code since the web API is inconsistent...
     headers={}
     l=[]
@@ -94,7 +106,8 @@ def copy(urlin, urlsout):
         l.append('%s=%s' % (cookie, cookval))
     headers['Cookie'] = '; '.join(l)
 
-    factory = client.HTTPDownloader(urlin, Emitter(urlsout), headers=headers)
+    factory = client.HTTPDownloader(urlin,
+        Emitter(urlsout, transformer), headers=headers)
     scheme, host, port, path = client._parse(urlin)
     reactor.connectTCP(host, port, factory)
     factory.deferred.addCallback(cb(factory))
