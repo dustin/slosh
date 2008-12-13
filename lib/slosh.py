@@ -7,37 +7,20 @@ Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
 import xml.sax
 import xml.sax.saxutils
 import cStringIO as StringIO
-from collections import deque
 
 from twisted.web import server, resource
 from twisted.internet import task
 
-class RequestQueue(object):
-
-    max_queue_size = 100
-
-    def __init__(self, session):
-        self.session = session
-        self.accepted = 0
-        self.__q=deque()
-
-    def append(self, content):
-        self.accepted += 1
-        self.__q.append(content)
-        if self.accepted > self.max_queue_size:
-            self.__q.popleft()
-
-    def empty(self):
-        rv = (self.__q, self.accepted)
-        self.__q = deque()
-        self.accepted = 0
-        return rv
-
 class Topic(resource.Resource):
 
+    max_queue_size = 100
+    max_id = 1000000000
+
     def __init__(self):
+        self.last_id = 0
+        self.objects=[]
         self.requests=[]
-        self.queues={}
+        self.known_sessions={}
         self.formats={'xml': self.__transmit_xml, 'json': self.__transmit_json}
         l = task.LoopingCall(self.__touch_active_sessions)
         l.start(5, now=False)
@@ -45,22 +28,33 @@ class Topic(resource.Resource):
     def render(self, request):
         if request.method == 'GET':
             session = request.getSession()
-            if session.uid not in self.queues:
+            if session.uid not in self.known_sessions:
                 print "New session: ", session.uid
-                self.queues[session.uid] = RequestQueue(session)
+                self.known_sessions[session.uid] = self.last_id
                 session.notifyOnExpire(self.__mk_session_exp_cb(session.uid))
             if not self.__deliver(request):
                 self.requests.append(request)
                 request.notifyFinish().addBoth(self.__req_finished(request))
             return server.NOT_DONE_YET
         else:
-            # Store all the data for all known queues
-            args = request.args
-            for sid, a in self.queues.iteritems():
-                a.append(args)
+            # Store the object
+            self.objects.append(request.args)
+            if len(self.objects) > self.max_queue_size:
+                del self.objects[0]
+            self.last_id += 1
+            if self.last_id > self.max_id:
+                self.last_id = 1
             for r in self.requests:
                 self.__deliver(r)
             return self.__mk_res(request, 'ok', 'text/plain')
+
+    def __since(self, n):
+        # If a nonsense ID comes in, scoop them all up.
+        if n > self.last_id:
+            n = self.last_id - 1
+        f = max(0, self.last_id - n)
+        rv = self.objects[0-f:] if self.last_id > n else []
+        return rv, self.last_id - n
 
     def __req_finished(self, request):
         def f(*whatever):
@@ -73,13 +67,19 @@ class Topic(resource.Resource):
 
     def __deliver(self, req):
         sid = req.getSession().uid
-        (data, oldsize) = self.queues[sid].empty()
+        since = req.args.get('n')
+        if since:
+            since=int(since[0])
+        else:
+            since = self.known_sessions[sid]
+        data, oldsize = self.__since(since)
         if data:
             fmt = 'xml'
             if req.path.find(".") > 0:
                 fmt=req.path.split(".")[-1]
             self.formats.get(fmt, self.__transmit_xml)(req, data, oldsize)
             req.finish()
+        self.known_sessions[sid] = self.last_id
         return data
 
     def __transmit_xml(self, req, data, oldsize):
@@ -94,7 +94,9 @@ class Topic(resource.Resource):
         g=G(s, 'utf-8')
 
         g.startDocument()
-        g.startElement("res", {'saw': str(oldsize) })
+        g.startElement("res",
+            {'max': str(self.last_id), 'saw': str(oldsize),
+                'delivering': str(len(data)) })
 
         for h in data:
             g.startElement("p", {})
@@ -112,13 +114,14 @@ class Topic(resource.Resource):
     def __transmit_json(self, req, data, oldsize):
         import cjson
         jdata=[dict(s) for s in data]
-        j=cjson.encode({'saw': oldsize, 'res': jdata})
+        j=cjson.encode({'max': self.last_id, 'saw': oldsize,
+            'delivering': len(data), 'res': jdata})
         req.write(self.__mk_res(req, j, 'text/plain'))
 
     def __mk_session_exp_cb(self, sid):
         def f():
             print "Expired session", sid
-            del self.queues[sid]
+            del self.known_sessions[sid]
         return f
 
     def __mk_res(self, req, s, t):
