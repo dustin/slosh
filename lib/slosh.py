@@ -51,6 +51,7 @@ class Topic(resource.Resource):
     def __since(self, n):
         # If a nonsense ID comes in, scoop them all up.
         if n > self.last_id:
+            print "Overriding last ID from %d to %d" % (n, self.last_id - 1)
             n = self.last_id - 1
         f = max(0, self.last_id - n)
         rv = self.objects[0-f:] if self.last_id > n else []
