@@ -1,4 +1,4 @@
 *.pyc
 *.pid
 *.log
-slosh.conf
+slosh.tac
