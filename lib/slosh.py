@@ -16,8 +16,9 @@ class Topic(resource.Resource):
     max_queue_size = 100
     max_id = 1000000000
 
-    def __init__(self):
+    def __init__(self, filter=lambda a: a):
         self.last_id = 0
+        self.filter = filter
         self.objects=[]
         self.requests=[]
         self.known_sessions={}
@@ -38,7 +39,7 @@ class Topic(resource.Resource):
             return server.NOT_DONE_YET
         else:
             # Store the object
-            self.objects.append(request.args)
+            self.objects.append(self.filter(request.args))
             if len(self.objects) > self.max_queue_size:
                 del self.objects[0]
             self.last_id += 1
