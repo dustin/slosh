@@ -39,14 +39,16 @@ class Topic(resource.Resource):
             return server.NOT_DONE_YET
         else:
             # Store the object
-            self.objects.append(self.filter(request.args))
-            if len(self.objects) > self.max_queue_size:
-                del self.objects[0]
-            self.last_id += 1
-            if self.last_id > self.max_id:
-                self.last_id = 1
-            for r in self.requests:
-                self.__deliver(r)
+            filtered = self.filter(request.args)
+            if filtered:
+                self.objects.append(filtered)
+                if len(self.objects) > self.max_queue_size:
+                    del self.objects[0]
+                self.last_id += 1
+                if self.last_id > self.max_id:
+                    self.last_id = 1
+                for r in self.requests:
+                    self.__deliver(r)
             return self.__mk_res(request, 'ok', 'text/plain')
 
     def __since(self, n):
