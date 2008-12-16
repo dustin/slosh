@@ -64,10 +64,8 @@ class Topic(resource.Resource):
         rv = self.objects[0-f:] if self.last_id > n else []
         return rv, self.last_id - n
 
-    def __req_finished(self, request):
-        def f(*whatever):
-            self.requests.remove(request)
-        return f
+    def __req_finished(self, whatever, request):
+        self.requests.remove(request)
 
     def __touch_active_sessions(self):
         for r in self.requests:
