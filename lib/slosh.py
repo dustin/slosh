@@ -23,33 +23,37 @@ class Topic(resource.Resource):
         self.requests=[]
         self.known_sessions={}
         self.formats={'xml': self.__transmit_xml, 'json': self.__transmit_json}
+        self.methods = {'GET': self._do_GET, 'POST': self._do_POST}
         l = task.LoopingCall(self.__touch_active_sessions)
         l.start(5, now=False)
 
+    def _do_GET(self, request):
+        session = request.getSession()
+        if session.uid not in self.known_sessions:
+            print "New session: ", session.uid
+            self.known_sessions[session.uid] = self.last_id
+            session.notifyOnExpire(self.__mk_session_exp_cb(session.uid))
+        if not self.__deliver(request):
+            self.requests.append(request)
+            request.notifyFinish().addBoth(self.__req_finished, request)
+        return server.NOT_DONE_YET
+
+    def _do_POST(self, request):
+        # Store the object
+        filtered = self.filter(request.args)
+        if filtered:
+            self.objects.append(filtered)
+            if len(self.objects) > self.max_queue_size:
+                del self.objects[0]
+            self.last_id += 1
+            if self.last_id > self.max_id:
+                self.last_id = 1
+            for r in self.requests:
+                self.__deliver(r)
+        return self.__mk_res(request, 'ok', 'text/plain')
+
     def render(self, request):
-        if request.method == 'GET':
-            session = request.getSession()
-            if session.uid not in self.known_sessions:
-                print "New session: ", session.uid
-                self.known_sessions[session.uid] = self.last_id
-                session.notifyOnExpire(self.__mk_session_exp_cb(session.uid))
-            if not self.__deliver(request):
-                self.requests.append(request)
-                request.notifyFinish().addBoth(self.__req_finished(request))
-            return server.NOT_DONE_YET
-        else:
-            # Store the object
-            filtered = self.filter(request.args)
-            if filtered:
-                self.objects.append(filtered)
-                if len(self.objects) > self.max_queue_size:
-                    del self.objects[0]
-                self.last_id += 1
-                if self.last_id > self.max_id:
-                    self.last_id = 1
-                for r in self.requests:
-                    self.__deliver(r)
-            return self.__mk_res(request, 'ok', 'text/plain')
+        return self.methods[request.method](request)
 
     def __since(self, n):
         # If a nonsense ID comes in, scoop them all up.
