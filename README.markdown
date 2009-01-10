@@ -58,7 +58,7 @@ For exaple, the following paths pull data from the same topic in XML format:
 
 If you wanted the same data, but in JSON format, you'd ask for the following:
 
-    /topic/test.json
+    /topics/test.json
 
 # Requirements
 
