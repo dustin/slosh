@@ -60,9 +60,22 @@ If you wanted the same data, but in JSON format, you'd ask for the following:
 
     /topics/test.json
 
+# Running
+
+Copy `slosh.tac.sample` to `slosh.tac` and optionally edit for your
+document root then use [twistd][twistd] to launch it.
+
+To see the example app interactively on console, you can do the following:
+
+    cp slosh.tac.sample slosh.tac
+    twistd -ny slosh.tac
+
 # Requirements
 
 [twisted](http://twistedmatrix.com/) is required to do anything at all.
 
 If you want JSON formatted results, the
 [python-cjson](http://pypi.python.org/pypi/python-cjson) egg is required.
+
+
+[twistd]: http://linux.die.net/man/1/twistd
