@@ -4,8 +4,7 @@
 Copyright (c) 2008  Dustin Sallings <dustin@spy.net>
 """
 
-import xml.sax
-import xml.sax.saxutils
+import json
 import cStringIO as StringIO
 
 from twisted.web import server, resource
@@ -16,13 +15,11 @@ class Topic(resource.Resource):
     max_queue_size = 100
     max_id = 1000000000
 
-    def __init__(self, filter=lambda a: a):
+    def __init__(self):
         self.last_id = 0
-        self.filter = filter
         self.objects=[]
         self.requests=[]
         self.known_sessions={}
-        self.formats={'xml': self.__transmit_xml, 'json': self.__transmit_json}
         self.methods = {'GET': self._do_GET, 'POST': self._do_POST}
         l = task.LoopingCall(self.__touch_active_sessions)
         l.start(5, now=False)
@@ -40,17 +37,17 @@ class Topic(resource.Resource):
 
     def _do_POST(self, request):
         # Store the object
-        filtered = self.filter(request.args)
-        if filtered:
-            self.objects.append(filtered)
-            if len(self.objects) > self.max_queue_size:
-                del self.objects[0]
-            self.last_id += 1
-            if self.last_id > self.max_id:
-                self.last_id = 1
-            for r in self.requests:
-                self.__deliver(r)
-        return self.__mk_res(request, 'ok', 'text/plain')
+        print request.content.read()
+        request.content.seek(0, 0)
+        self.objects.append(json.load(request.content))
+        if len(self.objects) > self.max_queue_size:
+            del self.objects[0]
+        self.last_id += 1
+        if self.last_id > self.max_id:
+            self.last_id = 1
+        for r in self.requests:
+            self.__deliver(r)
+        return self.__mk_res(request, 'ok', 'application/json')
 
     def render(self, request):
         return self.methods[request.method](request)
@@ -80,49 +77,16 @@ class Topic(resource.Resource):
             since = self.known_sessions[sid]
         data, oldsize = self.__since(since)
         if data:
-            fmt = 'xml'
-            if req.path.find(".") > 0:
-                fmt=req.path.split(".")[-1]
-            self.formats.get(fmt, self.__transmit_xml)(req, data, oldsize)
+            self.__transmit_json(req, data, oldsize)
             req.finish()
         self.known_sessions[sid] = self.last_id
         return data
 
-    def __transmit_xml(self, req, data, oldsize):
-        class G(xml.sax.saxutils.XMLGenerator):
-            def doElement(self, name, value, attrs={}):
-                self.startElement(name, attrs)
-                if value is not None:
-                    self.characters(value)
-                self.endElement(name)
-
-        s=StringIO.StringIO()
-        g=G(s, 'utf-8')
-
-        g.startDocument()
-        g.startElement("res",
-            {'max': str(self.last_id), 'saw': str(oldsize),
-                'delivering': str(len(data)) })
-
-        for h in data:
-            g.startElement("p", {})
-            for k,v in h.iteritems():
-                for subv in v:
-                    g.doElement(k, subv)
-            g.endElement("p")
-        g.endElement("res")
-
-        g.endDocument()
-
-        s.seek(0, 0)
-        req.write(self.__mk_res(req, s.read(), 'text/xml'))
-
     def __transmit_json(self, req, data, oldsize):
-        import cjson
         jdata=[dict(s) for s in data]
-        j=cjson.encode({'max': self.last_id, 'saw': oldsize,
+        j=json.dumps({'max': self.last_id, 'saw': oldsize,
             'delivering': len(data), 'res': jdata})
-        req.write(self.__mk_res(req, j, 'text/plain'))
+        req.write(self.__mk_res(req, j, 'application/json'))
 
     def __mk_session_exp_cb(self, sid):
         def f():
