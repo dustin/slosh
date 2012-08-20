@@ -37,8 +37,6 @@ class Topic(resource.Resource):
 
     def _do_POST(self, request):
         # Store the object
-        print request.content.read()
-        request.content.seek(0, 0)
         self.objects.append(json.load(request.content))
         if len(self.objects) > self.max_queue_size:
             del self.objects[0]
