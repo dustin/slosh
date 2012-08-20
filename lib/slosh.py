@@ -15,14 +15,16 @@ class Topic(resource.Resource):
     max_queue_size = 100
     max_id = 1000000000
 
-    def __init__(self):
+    def __init__(self, parent, topic):
         self.last_id = 0
+        self.parent = parent
+        self.topic = topic
         self.objects=[]
         self.requests=[]
         self.known_sessions={}
         self.methods = {'GET': self._do_GET, 'POST': self._do_POST}
-        l = task.LoopingCall(self.__touch_active_sessions)
-        l.start(5, now=False)
+        self.__cleanup = task.LoopingCall(self.__touch_active_sessions)
+        self.__cleanup.start(5, now=False)
 
     def _do_GET(self, request):
         session = request.getSession()
@@ -90,6 +92,10 @@ class Topic(resource.Resource):
         def f():
             print "Expired session", sid
             del self.known_sessions[sid]
+            if not self.known_sessions:
+                print "Need to delete topic", self.topic
+                self.__cleanup.stop()
+                self.parent.delEntity(self.topic)
         return f
 
     def __mk_res(self, req, s, t):
@@ -105,7 +111,7 @@ class Topics(resource.Resource):
             t=t.split(".", 1)[0]
             topic = self.getChildWithDefault(t, request)
         else:
-            topic = Topic()
+            topic = Topic(self, t)
             self.putChild(t, topic)
             print "Registered new topic", t
         return topic
