@@ -24,8 +24,7 @@ serviceCollection = service.IServiceCollection(application)
 
 # Keep really short sessions.
 server.Session.sessionTimeout=30
-topics = slosh.Topics()
-topics.type=TYPE
+topics = slosh.Topics(TYPE)
 
 root = static.File(ROOT)
 root.putChild('topics', topics)

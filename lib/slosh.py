@@ -109,7 +109,9 @@ class Topic(resource.Resource):
 
 class Topics(resource.Resource):
 
-    type=TYPE_NORMAL
+    def __init__(self, typ=TYPE_NORMAL):
+        resource.Resource.__init__(self)
+        self.type=typ
 
     def getChild(self, path, request):
         t=path.split('/', 1)[0]
