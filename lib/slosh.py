@@ -8,6 +8,7 @@ import json
 import cStringIO as StringIO
 
 from twisted.web import server, resource
+from twisted.web.resource import NoResource
 from twisted.internet import task
 
 class Topic(resource.Resource):
@@ -110,9 +111,13 @@ class Topics(resource.Resource):
         if t.find(".") > 0:
             t=t.split(".", 1)[0]
             topic = self.getChildWithDefault(t, request)
-        else:
+        elif request.method == "GET":
             topic = Topic(self, t)
             self.putChild(t, topic)
             print "Registered new topic", t
+        else:
+            print "Tried to post to a non-existent topic"
+            return NoResource()
+
         return topic
 
