@@ -10,55 +10,83 @@ sloppier.
 slosh allows http clients to respond to events as they occur using long-polling
 techniques.
 
-Integration with existing services is quite easy.  Services simply POST into a
-topic URL and a GET on the same URL will return that data in XML form.
+Integration with existing services is quite easy.  Services simply POST json into a
+topic URL and a GET on the same URL will return that json data with a few pieces of metadata.
+**Note: if you use the MAILBOX type of topic (set in the tac file) the server will respond with a 404 error if you post to an inactive topic.
+A topic is only active while someone is watching it (with a long-poll).
+Once the user goes away the topic remains active for a configurable amount of time
+before becoming inactive.  If you use the NORMAIL type of topic the topic exists as long as there is something watching it (with a long-poll) or data is being POST'ed to it
 
 For example point your browser to http://localhost:8000/topics/test -- The
 browser will hang indefinitely waiting for a results.  Now run the following:
 
-    curl -d 'x=hello!' http://localhost:8000/topics/test
+    curl -d '{"response":{"message":[{"@id":"123","event":"Some Event Text"}]}}' http://localhost:8000/topics/test
 
 You should instantly see results in your browser:
 
-    <res saw="1">
-      <p>
-        <x>hello!</x>
-      </p>
-    </res>
+    {
+        max: 1,
+        saw: 1,
+        res: [
+            {
+                response: {
+                    message: [
+                        {
+                            @id: "123",
+                            event: "Some Event Text"
+                        }
+                    ]
+                }
+            }
+        ],
+        delivering: 1
+    }
 
 If you repeat the above query three times and reload with the browser, you
 should see queued results immediately:
 
-    <res saw="3">
-      <p>
-        <x>hello!</x>
-      </p>
-      <p>
-        <x>hello!</x>
-      </p>
-      <p>
-        <x>hello!</x>
-      </p>
-    </res>
+    {
+        max: 4,
+        saw: 3,
+        res: [
+            {
+                response: {
+                    message: [
+                        {
+                            @id: "123",
+                            event: "Some Event Text"
+                        }
+                    ]
+                }
+            },
+            {
+                response: {
+                    message: [
+                        {
+                            @id: "123",
+                            event: "Some Event Text"
+                        }
+                    ]
+                }
+            },
+            {
+                response: {
+                    message: [
+                        {
+                            @id: "123",
+                            event: "Some Event Text"
+                        }
+                    ]
+                }
+            }
+        ],
+        delivering: 3
+    }
 
 The `saw` value describes how many incoming messages were received by the
 server.  It may be larger than the number of requests you receive if the rate
 of incoming requests is higher than the rate at which you're processing the
 results.
-
-# Formats
-
-The default output format is XML.  However, JSON is also optionally supported
-and may be requested at access time by adding `.json` to the topic path.
-
-For exaple, the following paths pull data from the same topic in XML format:
-
-    /topics/test
-    /topics/test.xml
-
-If you wanted the same data, but in JSON format, you'd ask for the following:
-
-    /topics/test.json
 
 # Running
 
