@@ -11,6 +11,9 @@ from twisted.web import server, resource
 from twisted.web.resource import NoResource
 from twisted.internet import task
 
+TYPE_NORMAL  = 0
+TYPE_MAILBOX = 1
+
 class Topic(resource.Resource):
 
     max_queue_size = 100
@@ -106,12 +109,14 @@ class Topic(resource.Resource):
 
 class Topics(resource.Resource):
 
+    type=TYPE_NORMAL
+
     def getChild(self, path, request):
         t=path.split('/', 1)[0]
         if t.find(".") > 0:
             t=t.split(".", 1)[0]
             topic = self.getChildWithDefault(t, request)
-        elif request.method == "GET":
+        elif self.type == TYPE_NORMAL or request.method == "GET":
             topic = Topic(self, t)
             self.putChild(t, topic)
             print "Registered new topic", t

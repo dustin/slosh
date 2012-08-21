@@ -17,15 +17,18 @@ import slosh
 # Basic configuration
 PORT=8080
 ROOT='example'
+TYPE=slosh.TYPE_NORMAL #TYPE_MAILBOX topics only exist while clients are listening
 
 application = service.Application('slosh')
 serviceCollection = service.IServiceCollection(application)
 
 # Keep really short sessions.
 server.Session.sessionTimeout=30
+topics = slosh.Topics()
+topics.type=TYPE
 
 root = static.File(ROOT)
-root.putChild('topics', slosh.Topics())
+root.putChild('topics', topics)
 
 site = server.Site(root)
 site.sessionCheckTime = 30
